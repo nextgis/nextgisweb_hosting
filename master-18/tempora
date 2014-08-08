@@ -1,0 +1,2 @@
+{{ grains['os'] }}
+{{ grains['fqdn'] }}
