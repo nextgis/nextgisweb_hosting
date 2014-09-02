@@ -9,14 +9,14 @@ EOF
 exit 1
 fi
 
-name="$1"
+identifier="$1"
 fqdn_frontend="$2"
 fqdn_backend="$3"
 
-path="/etc/nginx/sites-available/ngw-instance-${name}.conf"
-path_enabled="/etc/nginx/sites-enabled/ngw-instance-${name}.conf"
+path_available="/etc/nginx/sites-available/ngw-instance-${identifier}.conf"
+path_enabled="/etc/nginx/sites-enabled/ngw-instance-${identifier}.conf"
 
-cat > "$path" <<EOF
+cat > "$path_available" <<EOF
 
 server {
 
@@ -27,7 +27,7 @@ server {
 
         # Since I utilize dynamic (DHCP) IP address allocation for the backend cluster,
         # I should provision for changing backend IP address. And that's how.
-        resolver 192.168.17.6;
+        resolver 192.168.18.6;
         resolver_timeout 10s;
 
         set \$backend_upstream_wsgi "${fqdn_backend}:9090";
@@ -41,5 +41,5 @@ server {
 EOF
 
 ln -sf \
-    "$path" \
+    "$path_available" \
     "$path_enabled" 

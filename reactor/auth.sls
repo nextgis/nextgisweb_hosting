@@ -1,3 +1,4 @@
+{#
 {% if 'act' in data and data['act'] == 'pend' and data['id'].startswith('instance-') %}
 
 minion_add:
@@ -5,4 +6,4 @@ minion_add:
         - match: {{ data['id'] }}
 
 {% endif %}
-
+#}

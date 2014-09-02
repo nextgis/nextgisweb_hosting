@@ -6,12 +6,15 @@ log () {
     echo $(date) / $(basename $0): "$@" >> $logfile
 }
 
-if $# -ne 2
+
+if test $# -ne 2
 then
     cat <<EOF
 USAGE:
     lxc-genconf.sh LVNAME LVIMAGE 
 EOF
+exit 1
+fi
 
 lvname="$1" 
 lvgroup="ngw"
