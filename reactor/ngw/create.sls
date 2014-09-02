@@ -1,12 +1,15 @@
-{% if data['id'] == 'proxy.ngw' %}
+{# {% if data['id'] == 'proxy.ngw' %} #}
+
+{% set keys = ['id', 'class', 'name'] %} 
+{# This list corresponds exactly to the structure sent #}
+{# by the event and the parameters used by the runner. #} 
+{% set values = data['data'] %}
+
 
 runner:
     runner.ngw.create:
-        - database: {{ data['data']['database'] }}
-        - username: {{ data['data']['username'] }}
-        - password: {{ data['data']['password'] }}
-        - identifier: {{ data['data']['identifier'] }}
-        - image: {{ data['data']['image'] }}
-        - hostname: {{ data['data']['hostname'] }}
+{% for key in keys %}
+        - {{ key }}: {{ values[key] }}
+{%- endfor %}
 
-{% endif %}
+{# {% endif %} #}
