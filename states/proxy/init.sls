@@ -4,7 +4,7 @@ nginx:
     service.running:
         - name: nginx
 
-{% set scripts = ['nginx-genconf.sh', 'nginx-rmconf.sh', 'call-create.sh'] %}
+{% set scripts = ['nginx-genconf.sh', 'nginx-rmconf.sh', 'call-create.sh', 'ngw-manager.sh'] %}
 
 {% for script in scripts %}
 

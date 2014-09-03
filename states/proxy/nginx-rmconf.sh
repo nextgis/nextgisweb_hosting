@@ -4,12 +4,15 @@ if test $# -ne 1
 then
     cat <<EOF
 Usage:
-    nginx-genconf.sh NAME
+    nginx-rmconf.sh ID
 EOF
 exit 1
 fi
 
-name="$1"
-path_enabled="/etc/nginx/sites-enabled/ngw-instance-${name}.conf"
+id="$1"
+path_available="/etc/nginx/sites-available/ngw-${id}.conf"
+path_enabled="/etc/nginx/sites-enabled/ngw-${id}.conf"
 
 rm "$path_enabled"
+rm "$path_available"
+
