@@ -5,6 +5,8 @@ base:
 
     'instance-*.ngw':
         - instance
+    'tempora-*.ngw':
+        - instance
 
     'proxy.ngw':
         - proxy

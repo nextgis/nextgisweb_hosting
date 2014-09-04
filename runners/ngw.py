@@ -32,8 +32,8 @@ def _log(message, tag = "NGW", facility = "local0", priority = "notice"):
 
 def _cmd_run(cli, target, *args):
     for arg in args:
-        cli.cmd(target, 'cmd.run', [arg])
-        _log("Command <%s> has run on host <%s>." % (arg, target)) 
+        cli.cmd(target, 'cmd.run', [arg], timeout = 30)
+        _log("Command <%s> has run on host <%s>." % (arg, target), priority = 'info') 
 
         # yaml.dump(output, (file('/tmp/salt.yaml', 'w')), default_flow_style=False)
 
@@ -78,7 +78,8 @@ def create(**kwargs):
     int_name = __id + '.ngw'
     ext_name = __name + '.gis.to'
 
-    _log("Create event caught, id: <%s>, class: <%s>, name: <%s>." % (__id, __class, __name)) 
+    _log("Create event caught, id: <%s>, class: <%s>, name: <%s>." % (__id, __class, __name)
+            , tag = "NGW-MANAGE") 
 
     _cmd_run(cli, 'master-18', 'lxc-genconf.sh %s %s' % (__id, __class))
     _cmd_run(cli, 'master-18', 'ngw-instance-configure.sh %s %s %s %s' % ((__id,) * 4))
@@ -94,9 +95,32 @@ def create(**kwargs):
     _cmd_run(cli, int_name, 'initctl start ngw-uwsgi')
     _cmd_run(cli, 'proxy.ngw', 'service nginx reload')
 
-    _log("Create event finished, id: <%s>, class: <%s>, name: <%s>." % (__id, __class, __name)) 
+    _log("Create event finished, id: <%s>, class: <%s>, name: <%s>." % (__id, __class, __name)
+            , tag = "NGW-MANAGE") 
 
     del cli
+
+def destroy(**kwargs):
+    cli = salt.client.LocalClient(__opts__['conf_file'])
+    wheel = salt.wheel.Wheel(salt.config.master_config('/etc/salt/master'))
+    event = salt.utils.event.MasterEvent('/var/run/salt/master')
+
+    __id = kwargs ['id']
+    int_name = __id + '.ngw'
+
+    _log("Destroy event caught, id: <%s>." % (__id)
+            , tag = "NGW-MANAGE")
+
+    _cmd_run(cli, 'proxy.ngw', 'nginx-rmconf.sh %s' % __id)
+    _cmd_run(cli, 'proxy.ngw', 'service nginx reload')
+    _cmd_run(cli, 'master-18', 'lxc-rmconf.sh %s' % __id)
+    _cmd_run(cli, 'db-precise.ngw', 'pg_erase.sh %s %s' % ((__id,)*2))
+    wheel.call_func('key.delete', match = int_name)
+
+    _log("Destroy event finished, id: <%s>." % (__id)
+            , tag = "NGW-MANAGE")
+
+    del cli 
 
 def create_obsolete_summer(**kwargs):
 
@@ -153,7 +177,7 @@ def create_obsolete_summer(**kwargs):
 
     del cli
 
-def destroy(**kwargs):
+def destroy_obsolete_summer(**kwargs):
 
     cli = salt.client.LocalClient(__opts__['conf_file']) 
 

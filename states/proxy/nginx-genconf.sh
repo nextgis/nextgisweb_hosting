@@ -13,8 +13,8 @@ identifier="$1"
 fqdn_frontend="$2"
 fqdn_backend="$3"
 
-path_available="/etc/nginx/sites-available/ngw-instance-${identifier}.conf"
-path_enabled="/etc/nginx/sites-enabled/ngw-instance-${identifier}.conf"
+path_available="/etc/nginx/sites-available/ngw-${identifier}.conf"
+path_enabled="/etc/nginx/sites-enabled/ngw-${identifier}.conf"
 
 cat > "$path_available" <<EOF
 
