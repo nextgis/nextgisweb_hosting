@@ -1,0 +1,8 @@
+
+auto eth0
+iface eth0 inet static
+    address 192.168.18.7
+    netmask 255.255.255.0
+    gateway 192.168.18.1
+    dns-search ngw
+    dns-nameservers 192.168.17.6 8.8.8.8 8.8.4.4

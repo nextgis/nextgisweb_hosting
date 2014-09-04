@@ -8,13 +8,14 @@ base:
     'tempora-*.ngw':
         - instance
 
-    'proxy.ngw':
-        - proxy
-    'db-precise.ngw':
-        - db-precise
+{% set hosts = ['db-precise', 'gate', 'log', 'ns1', 'proxy', 'salt'] %}
+{% for host in hosts %}
+    '{{ host }}.ngw':
+        - {{ host }}
+{% endfor %}
+
     'master-18':
         - master-18
-
 
     
 
