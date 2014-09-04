@@ -22,6 +22,7 @@ path="/var/lib/lxc/${lvgroup}-${lvname}"
 lvimage="$2"
 
 lvcreate --type thin --name ${lvname} --snapshot ${lvimage} --thinpool ${lvgroup}/pool0
+lvchange -ay -kn ${lvgroup}/${lvname}
 initctl start lxc-mounts lvname=${lvname} lvgroup=${lvgroup}
 
 # This is kinda naive precaution.
