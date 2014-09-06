@@ -1,21 +1,22 @@
+{% set name = 'proxy' %}
+
+/-{{ name }}:
+    file.recurse:
+        - name: / 
+        - source: salt://{{ name }}/files
+        - require:
+            - file: /-all
+
+/etc/sudoers:
+    file.managed:
+        - source: salt://{{ name }}/files/etc/sudoers
+        - require:
+            - file: /-{{ name }}
+        - permissions: 440
+
 nginx:
     pkg.installed:
         - name: nginx
     service.running:
         - name: nginx
-
-{% set scripts = ['nginx-genconf.sh', 'nginx-rmconf.sh', 'call-create.sh', 'ngw-manager.sh'] %}
-
-{% for script in scripts %}
-
-/root/{{ script }}:
-    file.managed:
-        - source: salt://proxy/{{ script }}
-        - mode: 755
-
-/usr/bin/{{ script }}:
-    file.symlink:
-        - target: /root/{{ script }}
-
-{% endfor %}
 

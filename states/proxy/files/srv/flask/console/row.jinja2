@@ -1,0 +1,58 @@
+<div id='{{ InstanceID }}'>
+    <div class='row'>
+        <hr>
+    </div>
+    <div class='row'>
+        <div class='col-md-6 col-md-offset-1'>
+            <div class='pull-left'>
+                <p>Instance ID: {{ InstanceID }}.</p>
+                <blockquote>
+                    <p><a href='http://{{ InstanceName }}.gis.to/'>{{ InstanceName }}</a></p>
+                    <footer>Instance class: {{ InstanceClass }}</footer> 
+                </blockquote>
+                {% if InstanceOrdered %}
+                <h3><span class="label label-primary pull-left">Ordered</span></h3> {% endif %}
+                {% if InstanceActive %}
+                <h3><span class="label label-success pull-left">Active</span></h3> {% endif %}
+
+
+            </div>
+            <div class='btn-group pull-right'>
+                {#
+                <button type='button' class='btn btn-info'
+                  onclick='
+                    {
+                        var target = "http://console.gis.to/deactivate?instanceid={{ InstanceID }}"
+                        var xmlHttp = null; 
+                        xmlHttp = new XMLHttpRequest();
+                        xmlHttp.open( "GET", target, false );
+                        xmlHttp.send( null );
+                        if(xmlHttp.responseText=="True")
+                        { document.getElementById("{{ InstanceID }}").style.display="none"; }
+                    } ' 
+                >Deactivate</button> #}
+
+                {% if InstanceActive or InstanceOrdered %}
+            <button type='button' class='btn btn-danger'
+                  onclick='
+                    {
+                        var target = "http://console.gis.to/destroy?instanceid={{ InstanceID }}"
+                        var xmlHttp = null; 
+                        xmlHttp = new XMLHttpRequest();
+                        xmlHttp.open( "GET", target, false );
+                        xmlHttp.send( null );
+                        if(xmlHttp.responseText=="True")
+                        { document.getElementById("{{ InstanceID }}").style.display="none"; }
+                        else { alert(xmlHttp.responseText) ; }
+                    } ' 
+                  >Destroy</button>
+                {% endif %}
+
+              {#
+              <button type='button' class='btn btn-default'>Recreate</button>
+              <button type='button' class='btn btn-primary'>Freeze</button> #}
+            </div>
+    
+        </div>
+    </div>
+</div>

@@ -4,6 +4,8 @@ import yaml
 import salt.wheel
 import time
 import subprocess
+import requests
+import psycopg2
 
 
 def up():
@@ -20,7 +22,7 @@ def up():
 def r1(*args,**kwargs):
     cli = salt.client.LocalClient()
 
-    
+
 
 
     del cli
@@ -28,12 +30,12 @@ def r1(*args,**kwargs):
 def _log(message, tag = "NGW", facility = "local0", priority = "notice"):
     subprocess.call(["logger", "-t", tag, "-p", "%s.%s" % (facility, priority), message])
     print "-p %s.%s" % (facility, priority)
-    
+
 
 def _cmd_run(cli, target, *args):
     for arg in args:
         cli.cmd(target, 'cmd.run', [arg], timeout = 30)
-        _log("Command <%s> has run on host <%s>." % (arg, target), priority = 'info') 
+        _log("Command <%s> has run on host <%s>." % (arg, target), priority = 'info')
 
         # yaml.dump(output, (file('/tmp/salt.yaml', 'w')), default_flow_style=False)
 
@@ -79,26 +81,58 @@ def create(**kwargs):
     ext_name = __name + '.gis.to'
 
     _log("Create event caught, id: <%s>, class: <%s>, name: <%s>." % (__id, __class, __name)
-            , tag = "NGW-MANAGE") 
+            , tag = "NGW-MANAGE")
+
+    _check_event(__id)
 
     _cmd_run(cli, 'master-18', 'lxc-genconf.sh %s %s' % (__id, __class))
     _cmd_run(cli, 'master-18', 'ngw-instance-configure.sh %s %s %s %s' % ((__id,) * 4))
     _cmd_run(cli, 'db-precise.ngw', 'pg_setup.sh %s %s %s' % ((__id,) * 3))
     _cmd_run(cli, 'proxy.ngw', 'nginx-genconf.sh %s %s %s' % (__id, ext_name, int_name))
-    _cmd_run(cli, 'master-18', 'lxc-start --daemon --name ngw-%s' % __id) 
-    _sleep_on_event(event, tag = 'salt/auth', target = int_name, keys = {'act': 'pend'}) 
-    wheel.call_func('key.accept', match = int_name) 
+    _cmd_run(cli, 'master-18', 'lxc-start --daemon --name ngw-%s' % __id)
+    _sleep_on_event(event, tag = 'salt/auth', target = int_name, keys = {'act': 'pend'})
+    wheel.call_func('key.accept', match = int_name)
     _sleep_on_event(event, tag = 'salt/minion/%s/start' % int_name, target = int_name)
     cli.cmd(int_name, 'state.highstate')
     _cmd_run(cli, int_name, 'initctl stop ngw-uwsgi')
-    _cmd_run(cli, int_name, '~ngw/env/bin/nextgisweb --config ~ngw/config.ini initialize_db') 
+    _cmd_run(cli, int_name, '~ngw/env/bin/nextgisweb --config ~ngw/config.ini initialize_db')
     _cmd_run(cli, int_name, 'initctl start ngw-uwsgi')
     _cmd_run(cli, 'proxy.ngw', 'service nginx reload')
 
     _log("Create event finished, id: <%s>, class: <%s>, name: <%s>." % (__id, __class, __name)
-            , tag = "NGW-MANAGE") 
+            , tag = "NGW-MANAGE")
+
+    response = requests.get("http://proxy/activate?instanceid=%s" % __id
+            , headers = { 'host': 'console.gis.to'})
+
+    if response.content == "True":
+        _log("Instance <%s> activated." % __id)
+    else:
+        _log("Failed to activate instance <%s>." % __id)
+
 
     del cli
+
+def _check_event(__id):
+    conn = psycopg2.connect(database="front", user="front", password="front", host="db-precise")
+    cur = conn.cursor()
+    try:
+        cur.execute( ''' update instances
+                set instanceeventaccepted = True where instanceid = %s ''' , [__id]) 
+        conn.commit()
+    except psycopg2.Error as e:
+        ret = e.pgerror
+    except Exception as e:
+        ret = str(e)
+    else:
+        if cur.rowcount == 1:
+            _log("An instance <%s> tagged as accepted." % __id)
+            return True
+        else:
+            _log('Something strange happened: %s instances ' \
+            'were tagged as accepted while trying %s.' % (cur.rowcount, __id))
+            return False
+
 
 def destroy(**kwargs):
     cli = salt.client.LocalClient(__opts__['conf_file'])
@@ -106,10 +140,14 @@ def destroy(**kwargs):
     event = salt.utils.event.MasterEvent('/var/run/salt/master')
 
     __id = kwargs ['id']
-    int_name = __id + '.ngw'
+
+    _log("Checking accepted event: %s" % _check_event(__id) )
+
 
     _log("Destroy event caught, id: <%s>." % (__id)
             , tag = "NGW-MANAGE")
+
+    int_name = __id + '.ngw'
 
     _cmd_run(cli, 'proxy.ngw', 'nginx-rmconf.sh %s' % __id)
     _cmd_run(cli, 'proxy.ngw', 'service nginx reload')
@@ -117,10 +155,21 @@ def destroy(**kwargs):
     _cmd_run(cli, 'db-precise.ngw', 'pg_erase.sh %s %s' % ((__id,)*2))
     wheel.call_func('key.delete', match = int_name)
 
+    response = requests.get("http://proxy/deactivate?instanceid=%s" % __id
+            , headers = { 'host': 'console.gis.to'})
+
+    if response.content == "True":
+        _log("Instance <%s> deactivated." % __id)
+    else:
+        _log("Failed to deactivate instance <%s>." % __id)
+
     _log("Destroy event finished, id: <%s>." % (__id)
             , tag = "NGW-MANAGE")
 
-    del cli 
+
+    del cli
+    del wheel
+    del event
 
 def create_obsolete_summer(**kwargs):
 
@@ -132,18 +181,18 @@ def create_obsolete_summer(**kwargs):
 
     cli.cmd('master-18', 'cmd.run', ['lxc-genconf.sh {0} {1}'.format(
           kwargs['identifier']
-        , kwargs['image'])]) 
+        , kwargs['image'])])
     cli.cmd('db-precise.ngw', 'cmd.run', ['pg_setup.sh {0} {1} {2}'.format(
           kwargs['database']
         , kwargs['username']
-        , kwargs['password'])]) 
+        , kwargs['password'])])
     cli.cmd( 'master-18'
            , 'cmd.run'
-           , ['ngw-instance-configure.sh {0} {1} {2} {3}'.format( 
+           , ['ngw-instance-configure.sh {0} {1} {2} {3}'.format(
                   kwargs['identifier']
                 , kwargs['database']
                 , kwargs['username']
-                , kwargs['password'])]) 
+                , kwargs['password'])])
     cli.cmd('proxy.ngw', 'cmd.run', ['nginx-genconf.sh {0} {1} {2}'.format(
           kwargs['identifier']
         , kwargs['hostname']+'.gis.to' # External FQDN logic.
@@ -179,7 +228,7 @@ def create_obsolete_summer(**kwargs):
 
 def destroy_obsolete_summer(**kwargs):
 
-    cli = salt.client.LocalClient(__opts__['conf_file']) 
+    cli = salt.client.LocalClient(__opts__['conf_file'])
 
     cli.cmd('proxy.ngw', 'cmd.run', ['nginx-rmconf.sh {0}'.format(
           kwargs['identifier'])])
@@ -205,7 +254,7 @@ def tempora(**kwargs):
     # I have no idea why it silently and quickly fails.
     # cli.cmd('master-18', 'cmd.run', ['salt-call cp.get_file salt://master-18/tempora /tmp/tempora'])
     # This works anyway.
-    
+
     # cli.cmd('master-18', 'cmd.run', ['salt-call cp.get_template salt://master-18/tempora /tmp/tempora'])
     # wheel.call_func('key.accept', match='tempora-10.ngw')
     # cli.cmd('tempora-7' + '.ngw', 'cmd.run', ['user=ngw', 'cwd=/tmp', 'touch ngw-X1'])

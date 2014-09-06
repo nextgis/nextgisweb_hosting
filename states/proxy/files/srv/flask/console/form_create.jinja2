@@ -1,0 +1,20 @@
+<div class='row'>
+    <div class='col-md-6 col-md-offset-1'>
+        <form role="form" action='/create' method='post'>
+          <div class="form-group">
+            <label for="InstanceName">Instance name</label>
+            <input type="text" class="form-control" id="InstanceName" name="InstanceName" placeholder="Enter instance name" value='lash-{{ LastEntry }}'>
+          </div>
+          <div class="form-group">
+            <label for="InstanceClass">Instance class</label>
+            <input type="text" class="form-control" id="InstanceClass" name="InstanceClass" placeholder="Enter instance class" value='image-A-1.00'>
+          </div>
+          <div class="form-group">
+            <label for="InstanceID">Instance ID</label>
+            <input type="text" class="form-control" id="InstanceID" name="InstanceID" placeholder="Enter instance ID" value='tempora-lash-{{ LastEntry }}'>
+            <p class="help-block">This is an instance creation form.</p>
+          </div>
+          <button type="submit" class="btn btn-success">Create</button>
+        </form>
+    </div>
+</div>

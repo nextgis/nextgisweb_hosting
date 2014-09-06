@@ -40,12 +40,9 @@ ssh:
 
 zsh:
     pkg.installed:
-        - require:
-            - git: zsh-syntax-highlighting
-
-zsh-syntax-highlighting:
-    git.present:
-        - name: https://github.com/zsh-users/zsh-syntax-highlighting
+        - name: zsh
+    git.latest:
+        - name: git://github.com/zsh-users/zsh-syntax-highlighting.git
         - target: /usr/share/zsh/plugins/zsh-syntax-highlighting
     
 
@@ -54,4 +51,37 @@ root:
     user.present:
         - password: '!'
         - shell: /bin/zsh
+
+salt:
+    group.present
+
+{#
+/etc/salt:
+    file.directory:
+        - user: root
+        - group: salt
+        - recurse:
+            - user
+            - group
+        - require:
+            - group: salt
+
+/etc/salt/pki/minion:
+    file.directory:
+        - mode: 750
+
+/etc/salt/pki/minion/minion.pem:
+    file.managed:
+        - mode: 640
+
+/var/cache/salt:
+    file.directory:
+        - user: root
+        - group: salt
+        - recurse:
+            - user
+            - group
+        - require:
+            - group: salt
+#}
 

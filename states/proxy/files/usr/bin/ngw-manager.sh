@@ -3,11 +3,16 @@
 f_create () {
     id="$1"
     class="$2"
-    name="$1"
+    if test $# -gt 2
+    then
+        name="$3"
+    else
+        name="$1"
+    fi
 
     salt-call event.fire_master \
         "{ 'id': '${id}' , 'class': '${class}' , 'name': '${name}' } " \
-        "ngw/create"
+        "ngw/create" >> /tmp/log.out
 }
 
 f_destroy () {
@@ -15,7 +20,7 @@ f_destroy () {
 
     salt-call event.fire_master \
         "{ 'id': '${id}' } " \
-        "ngw/destroy"
+        "ngw/destroy" >> /tmp/log.out
 }
 
 if test $# -eq 0
@@ -35,11 +40,13 @@ case $action in
     (create)
         f_create "$@"
         logger -p local0.notice -t NGW-MANAGE \
-            "Manager was called for a valid event <$action> with $# arguments."
+            "Manager was called for a valid event <$action> with $@ arguments."
         ;;
 
     (destroy)
         f_destroy "$@"
+        logger -p local0.notice -t NGW-MANAGE \
+            "Manager was called for a valid event <$action> with $@ arguments."
         ;;
 
     (*)
