@@ -40,6 +40,36 @@ def activate():
         conn.close() 
         return ret 
 
+@app.route('/create', methods = ['POST', 'GET'])
+def create():
+    form = dict(zip( flask.request.form.keys()
+        , [ str(value) for value in flask.request.form.values() ] ) )
+
+    _db_init()
+
+    conn = psycopg2.connect(database="front", user="front", password="front", host="db-precise")
+    cur = conn.cursor()
+
+    try:
+        cur.execute( ''' insert into instances
+                    ( instanceid , instanceclass , instancename , instanceordered
+                    , instanceactive , instanceeventaccepted )
+                    values ( %s , %s , %s , True , False, False ); '''
+                , [ form ['InstanceID'], form ['InstanceClass'], form ['InstanceName'] ]
+                ) 
+        conn.commit()
+    except psycopg2.Error as e:
+        return e.pgerror
+    except Exception as e:
+        return str(e)
+
+    subprocess.call(['logger', '-p', 'local0.notice', '-t', 'NGW-MANAGE'
+            , form ['InstanceID'], form ['InstanceClass'], form ['InstanceName']])
+    subprocess.call(['sudo', 'ngw-manager.sh', 'create'
+            , form ['InstanceID'], form ['InstanceClass'], form ['InstanceName']])
+
+    return flask.redirect('http://console.gis.to', code=302)
+
 @app.route('/destroy', methods=['GET'])
 def destroy(): 
 
@@ -50,22 +80,29 @@ def destroy():
         cur.execute( ''' update instances set instanceordered = False where instanceid = %s '''
                 , [ flask.request.args['instanceid'] ]
                 )
+        conn.commit()
 
     except psycopg2.Error as e:
         ret = e.pgerror
 
-    else:
-        subprocess.call(['logger', '-p', 'local0.notice', '-t', 'NGW-MANAGE'
-            , 'Web UI calls destruction: %s.' % flask.request.args['instanceid']])
-        subprocess.call(['sudo', 'ngw-manager.sh', 'destroy', flask.request.args['instanceid']])
-        ret = 'True'
+    subprocess.call(['logger', '-p', 'local0.notice', '-t', 'NGW-MANAGE'
+        , 'Web UI calls destruction: %s.' % flask.request.args['instanceid']])
+    subprocess.call(['sudo', 'ngw-manager.sh', 'destroy', flask.request.args['instanceid']])
+    ret = 'True'
 
-
-    finally:
+    try:
+        cur.execute( ''' delete from instances where instanceid = %s '''
+                , [ flask.request.args['instanceid'] ]
+                )
         conn.commit()
-        cur.close()
-        conn.close() 
-        return ret 
+
+    except psycopg2.Error as e:
+        ret = e.pgerror
+
+    cur.close()
+    conn.close() 
+
+    return ret 
 
 @app.route('/deactivate', methods=['GET'])
 def deactivate(): 
@@ -148,65 +185,29 @@ def _db_init():
     cur.close()
     conn.close() 
 
-def _uncheck_event(__id):
-    conn = psycopg2.connect(database="front", user="front", password="front", host="db-precise")
-    cur = conn.cursor()
-    try:
-        cur.execute( ''' select instanceeventaccepted
-                from instances where instanceid = %s ''' , [__id] ) 
-    except psycopg2.Error as e:
-        return e.pgerror
-    except Exception as e:
-        return str(e)
-    else:
-        if cur.rowcount == 1 and cur.fetchone()[0] == True: 
-            try:
-                cur.execute(''' update instances
-                        set instanceeventaccepted = False where instanceid = %s''' , [__id] )
-                conn.commit()
-            except psycopg2.Error as e: 
-                return e.pgerror
-            except Exception as e:
-                return str(e)
-            return True
-
-    return False 
-
-@app.route('/create', methods = ['POST', 'GET'])
-def create():
-    form = dict(zip( flask.request.form.keys()
-        , [ str(value) for value in flask.request.form.values() ] ) )
-
-    _db_init()
-
-    conn = psycopg2.connect(database="front", user="front", password="front", host="db-precise")
-    cur = conn.cursor()
-
-    try:
-        cur.execute( ''' insert into instances
-                    ( instanceid , instanceclass , instancename , instanceordered
-                    , instanceactive )
-                    values ( %s , %s , %s , True , False ); '''
-                , [ form ['InstanceID'], form ['InstanceClass'], form ['InstanceName'] ]
-                ) 
-        conn.commit()
-    except psycopg2.Error as e:
-        return e.pgerror
-    except Exception as e:
-        return str(e)
-
-    flag = False
-    count = 0
-    while not flag and count < 13:
-        subprocess.call(['logger', '-p', 'local0.notice', '-t', 'NGW-MANAGE'
-                , form ['InstanceID'], form ['InstanceClass'], form ['InstanceName']])
-        subprocess.call(['sudo', 'ngw-manager.sh', 'create'
-                , form ['InstanceID'], form ['InstanceClass'], form ['InstanceName']])
-        time.sleep(1)
-        count += 1
-        flag = _uncheck_event(form['InstanceID'])
-
-    return flask.redirect('http://console.gis.to', code=302)
+# def _uncheck_event(__id):
+#     conn = psycopg2.connect(database="front", user="front", password="front", host="db-precise")
+#     cur = conn.cursor()
+#     try:
+#         cur.execute( ''' select instanceeventaccepted
+#                 from instances where instanceid = %s ''' , [__id] ) 
+#     except psycopg2.Error as e:
+#         return e.pgerror
+#     except Exception as e:
+#         return str(e)
+#     else:
+#         if cur.rowcount == 1 and cur.fetchone()[0] == True: 
+#             try:
+#                 cur.execute(''' update instances
+#                         set instanceeventaccepted = False where instanceid = %s''' , [__id] )
+#                 conn.commit()
+#             except psycopg2.Error as e: 
+#                 return e.pgerror
+#             except Exception as e:
+#                 return str(e)
+#             return True
+# 
+#     return False 
 
 if __name__ == '__main__':
     # if not app.debug:
