@@ -6,6 +6,7 @@ import time
 import subprocess
 import psycopg2
 import requests
+from timeout import timeout
 
 
 
@@ -18,6 +19,7 @@ def _cmd_run(cli, target, *args):
         cli.cmd(target, 'cmd.run', [arg], timeout = 30)
         _log("Command <%s> has run on host <%s>." % (arg, target), priority = 'info') 
 
+@timeout(60)
 def _sleep_on_event(event, tag, target, keys = {}, wait = 60, timeout = 300):
     _log("Sleeping on event with tag <%s> from host <%s>." % (tag, target))
     time_limit = time.time() + timeout
