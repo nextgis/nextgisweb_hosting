@@ -41,9 +41,11 @@ ssh:
 zsh:
     pkg.installed:
         - name: zsh
+{#
     git.latest:
         - name: git://github.com/zsh-users/zsh-syntax-highlighting.git
         - target: /usr/share/zsh/plugins/zsh-syntax-highlighting
+#}
     
 
 
