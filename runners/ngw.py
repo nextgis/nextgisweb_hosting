@@ -133,6 +133,8 @@ def destroy(**kwargs):
             , tag = "NGW-MANAGE")
 
     del cli 
+    del wheel
+    del event
 
 
 def _check_event(__id):
