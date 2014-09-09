@@ -6,6 +6,10 @@
 
 f_event () {
     # I notice salt event system loses events too often. Hence this.
+    
+    SLEEP=2
+    RETRIES=1
+
     event_message="$1"
     event_tag="$2"
             logger -p local0.notice -t NGW-MANAGE \
@@ -14,7 +18,7 @@ f_event () {
     export PGHOST=db-precise
     export PGDATABASE=front
     export PGUSER=front
-    export PGPASSWORD=front
+    export PGPASSWORD=front 
 
     psql -At -c " update \"instances\" set \"instanceeventaccepted\" = False where \"instanceid\" = '$id' ; " 
 
@@ -28,7 +32,7 @@ f_event () {
         salt-call event.fire_master "$event_message" "$event_tag" 
         logger -p local0.notice -t NGW-MANAGE \
             "Event sent, waiting for confirmation. (<$action> for instance <$id>)."
-        sleep 2
+        sleep $SLEEP
 
         status=$( echo " select instanceeventaccepted from \"instances\" where instanceid = '$id'  " | psql -At )
         if [ "x$status" = 'xt' ]
@@ -38,11 +42,11 @@ f_event () {
         fi 
 
         i=$(($i+1))
-        if [ $i -gt 3 ]
+        if [ $i -ge $RETRIES ]
         then
             logger -p local0.notice -t NGW-MANAGE \
                 "Manager failed to deliver event <$action> for instance <$id>."
-            exit 1
+            return 1
         fi
     done
     logger -p local0.notice -t NGW-MANAGE \
@@ -86,6 +90,9 @@ case $action in
         event_tag="ngw/destroy"
         event_message="{ 'id': '${id}' }"
 
+        f_event "$event_message" "$event_tag"
+        # Twice because the first event in a row gets lost between the minion and the master.
+        # (I don't know why and how to fix it.)
         f_event "$event_message" "$event_tag"
         
         ;;
