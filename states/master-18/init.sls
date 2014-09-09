@@ -31,3 +31,7 @@
 /etc/init/lxc-instance.conf:
     file.managed:
         - source: salt://master-18/lxc-instance.conf
+
+/usr/bin/ngw-instance-configure.sh:
+    file.managed:
+        - source: salt://master-18/ngw-instance-configure.sh

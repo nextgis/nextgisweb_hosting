@@ -50,11 +50,11 @@ secret = nextgis
 
 [file_upload]
 
-path = /home/ngw/data_upload
+path = /tmp
 
 [file_storage]
 
-path = /home/ngw/data_storage
+path = /data
 
 [webmap]
 
