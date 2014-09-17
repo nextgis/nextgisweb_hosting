@@ -74,6 +74,13 @@ def create(**kwargs):
         _log('Something strange happened: %s instances ' \
         'were tagged as accepted while trying %s.' % (cur.rowcount, __id))
 
+    cur.execute( ''' select instanceactive from instances '''
+            ''' where instanceid = %s and instanceactive = True ''', [__id])
+    if cur.rowcount == 1:
+        _log("An instance <%s> already marked as active. Interrupt." % __id)
+        return False
+
+
     _cmd_run(cli, 'master-18', 'lxc-genconf.sh %s %s' % (__id, __class))
     _cmd_run(cli, 'master-18', 'ngw-instance-configure.sh %s %s %s %s' % ((__id,) * 4))
     _cmd_run(cli, 'db-precise.ngw', 'pg_setup.sh %s %s %s' % ((__id,) * 3))
@@ -129,12 +136,22 @@ def destroy(**kwargs):
     _cmd_run(cli, 'db-precise.ngw', 'pg_erase.sh %s %s' % ((__id,)*2))
     wheel.call_func('key.delete', match = int_name)
 
-    _log("Destroy event finished, id: <%s>." % (__id)
-            , tag = "NGW-MANAGE")
+    conn.close()
+
 
     del cli 
     del wheel
     del event
+
+    _log("Destroy event finished, id: <%s>." % (__id)
+            , tag = "NGW-MANAGE")
+
+
+    return True
+
+
+def dummy():
+    pass
 
 
 def _check_event(__id):

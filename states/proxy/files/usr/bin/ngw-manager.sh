@@ -83,6 +83,9 @@ case $action in
         event_message="{ 'id': '${id}' , 'class': '${class}' , 'name': '${name}' }" 
 
         f_event "$event_message" "$event_tag"
+        # Twice because the first event in a row gets lost between the minion and the master.
+        # (I don't know why and how to fix it.)
+        f_event "$event_message" "$event_tag"
         ;;
 
     (destroy)
