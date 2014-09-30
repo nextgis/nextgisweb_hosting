@@ -1,0 +1,9 @@
+# This server leads nowhere.
+server {
+	listen 80 default_server ; 
+	# listen [::]:80 ipv6only=on default_server ;
+
+    return 302 http://front.gis.to;
+
+    client_max_body_size 1g;
+}
