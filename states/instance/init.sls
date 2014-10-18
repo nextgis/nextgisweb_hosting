@@ -11,3 +11,15 @@ ngw-uwsgi:
         - watch:
             - file: /etc/init/ngw-uwsgi.conf
 
+gdal-bin:
+    pkg.installed
+
+/data:
+  file.directory:
+    - user: ngw
+    - group: ngw
+    - makedirs: True
+    - recurse:
+      - user
+      - group
+

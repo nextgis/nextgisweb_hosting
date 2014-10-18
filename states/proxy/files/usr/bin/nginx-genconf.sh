@@ -35,6 +35,8 @@ server {
 
         include uwsgi_params;
         uwsgi_pass \$backend_upstream_wsgi;
+
+        client_max_body_size 0;
     }
 }
 
