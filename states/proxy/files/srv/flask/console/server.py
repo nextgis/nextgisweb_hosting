@@ -4,16 +4,45 @@ from os.path import join, dirname, realpath
 import psycopg2
 import subprocess
 import time
+import json
 
 
 app = flask.Flask(__name__)
+config = { 'cluster': 'ngw'
+        , 'domain': 'gis.to' }
 
 def _render(template, env = {}):
     return jinja2.Template(open(join(dirname(realpath(__file__)),template)).read()).render(env)
 
+def _log(message, tag = config['cluster'], facility = "local0", priority = "notice"):
+    subprocess.call (["logger", "-t", tag, "-p", "%s.%s" % (facility, priority), message])
+
+def _event_fire(message, tag = '%s/common' % config['cluster']):
+    subprocess.check_call(['sudo', 'salt-call', 'event.fire_master', '%s' % json.dumps(message), '%s' % tag]) 
+
 @app.route('/exercise')
 def exercise():
     return 'lalafa'
+
+# @app.route('/api/<f>', methods = ['GET'])
+# def api_get(f):
+#     '''
+#     Present the requestor with information, according to the arguments of the GET request.
+#     The source may be arbitrary, say a monitoring tool API.
+#     '''
+#     t = flask.request.args
+#     pass
+
+@app.route('/api/<f>', methods = ['POST'])
+def api_post(f):
+    '''
+    Pass the posted form's dictionary to salt reactor through an event, and
+    return the requestor home.
+    '''
+    _event_fire ( tag = '{}/{}' . format ( config['cluster'], f )
+            , message =  dict(zip( flask.request.form.keys()
+                , [ str(value) for value in flask.request.form.values() ] ) + config.items() ))
+    return flask.redirect('http://console.gis.to', code=302)
 
 @app.route('/activate', methods=['GET'])
 def activate(): 
@@ -210,9 +239,9 @@ def _db_init():
 #     return False 
 
 if __name__ == '__main__':
-    # if not app.debug:
-    #     import logging
-    #     file_handler = logging.FileHandler(filename = '/tmp/flask.log')
-    #     app.logger.addHandler (file_handler)
+    if not app.debug:
+        import logging
+        file_handler = logging.FileHandler(filename = '/tmp/flask.log')
+        app.logger.addHandler (file_handler)
     app.run()
 

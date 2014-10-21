@@ -1,6 +1,6 @@
 {# {% if data['id'] == 'proxy.ngw' %} #}
 
-{% set keys = ['id', 'class', 'name'] %} 
+{% set keys = data['data'].keys() %} 
 {# This list corresponds exactly to the structure sent #}
 {# by the event and the parameters used by the runner. #} 
 {% set values = data['data'] %}

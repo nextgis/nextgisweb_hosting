@@ -6,9 +6,33 @@ import time
 import subprocess
 import psycopg2
 import requests
-from timeout import timeout
+from functools import wraps
+import errno
+import os
+import signal
 
 
+class TimeoutError(Exception):
+    pass
+
+
+def timeout(seconds=10, error_message=os.strerror(errno.ETIME)):
+    def decorator(func):
+        def _handle_timeout(signum, frame):
+            raise TimeoutError(error_message)
+
+        def wrapper(*args, **kwargs):
+            signal.signal(signal.SIGALRM, _handle_timeout)
+            signal.alarm(seconds)
+            try:
+                result = func(*args, **kwargs)
+            finally:
+                signal.alarm(0)
+            return result
+
+        return wraps(func)(wrapper)
+
+    return decorator
 
 def _log(message, tag = "NGW", facility = "local0", priority = "notice"):
     subprocess.call(["logger", "-t", tag, "-p", "%s.%s" % (facility, priority), message])
@@ -46,67 +70,62 @@ def create(**kwargs):
     wheel = salt.wheel.Wheel(salt.config.master_config('/etc/salt/master'))
     event = salt.utils.event.MasterEvent('/var/run/salt/master')
 
-    # _cmd_run(cli, 'master-18', 'touch /tmp/touch.me', 'touch /tmp/touch_2.me')
-    # yaml.dump(cli.cmd('salt.ngw', 'state.highstate'), file('/tmp/salt.yaml', 'w'))
+    # I should be passing cluster label from the front-end.
+    # __id = kwargs ['InstanceID']
+    # __class = kwargs ['InstanceClass']
+    # __name = kwargs ['InstanceName']
+    # int_name = '{InstanceID}.{cluster}'.format(**kwargs)
+    # ext_name = '{InstanceName}.{domain}'.format(**kwargs)
 
-    # ret = cli.cmd('salt.ngw', 'state.highstate')
-    # for target in ret:
-    #     for key in data if key == "result" and data["key"]:
-    #         file('/tmp/salt.log', 'w')).write("
+    _log("Create event caught, id: {InstanceID}, class: {InstanceClass}, name: {InstanceName}."
+            . format (**kwargs)
+                , tag = "{cluster}".format(**kwargs))
 
-    __id = kwargs ['id']
-    __class = kwargs ['class']
-    __name = kwargs ['name']
-    int_name = __id + '.ngw'
-    ext_name = __name + '.gis.to'
+    context_args = [ '{}="{}"'.format(key, value) for key, value in kwargs.items() ]
+    cli.cmd('master-18', 'cp.get_template', ['salt://master-18/tempora', '/tmp/tempora'] + context_args)
+    cli.cmd('master-18', 'file.mkdir', ['/var/lib/lxc/{cluster}-{InstanceID}'.format(**kwargs)])
+    cli.cmd('master-18', 'cp.get_template',
+            ['salt://template/container.jinja'
+                , '/var/lib/lxc/{cluster}-{InstanceID}/config'.format(**kwargs)] + context_args)
+    lvm_options = {
+              'type': 'thin'
+            , 'snapshot': kwargs['InstanceClass']
+            , 'thinpool': '{cluster}/pool0'.format(**kwargs)
+            }
 
-    _log("Create event caught, id: <%s>, class: <%s>, name: <%s>." % (__id, __class, __name)
-            , tag = "NGW-MANAGE") 
-
-    conn = psycopg2.connect(database="front", user="front", password="front", host="db-precise")
-    cur = conn.cursor()
-    cur.execute( ''' update instances
-            set instanceeventaccepted = True where instanceid = %s ''' , [__id]) 
-    conn.commit()
-    if cur.rowcount == 1:
-        _log("An instance <%s> tagged as accepted." % __id)
-    else:
-        _log('Something strange happened: %s instances ' \
-        'were tagged as accepted while trying %s.' % (cur.rowcount, __id))
-
-    cur.execute( ''' select instanceactive from instances '''
-            ''' where instanceid = %s and instanceactive = True ''', [__id])
-    if cur.rowcount == 1:
-        _log("An instance <%s> already marked as active. Interrupt." % __id)
-        return False
+    cli.cmd('master-18', 'lvm.lvcreate'
+        , [kwargs['InstanceID']
+            , kwargs['cluster']
+            , lvm_options ])
 
 
-    _cmd_run(cli, 'master-18', 'lxc-genconf.sh %s %s' % (__id, __class))
-    _cmd_run(cli, 'master-18', 'ngw-instance-configure.sh %s %s %s %s' % ((__id,) * 4))
-    _cmd_run(cli, 'db-precise.ngw', 'pg_setup.sh %s %s %s' % ((__id,) * 3))
-    _cmd_run(cli, 'proxy.ngw', 'nginx-genconf.sh %s %s %s' % (__id, ext_name, int_name))
-    _cmd_run(cli, 'master-18', 'lxc-start --daemon --name ngw-%s' % __id) 
-    _sleep_on_event(event, tag = 'salt/auth', target = int_name, keys = {'act': 'pend'}) 
-    wheel.call_func('key.accept', match = int_name) 
-    _sleep_on_event(event, tag = 'salt/minion/%s/start' % int_name, target = int_name)
-    cli.cmd(int_name, 'state.highstate')
-    _cmd_run(cli, int_name, 'initctl stop ngw-uwsgi')
-    _cmd_run(cli, int_name, '~ngw/env/bin/nextgisweb --config ~ngw/config.ini initialize_db') 
-    _cmd_run(cli, int_name, 'initctl start ngw-uwsgi')
-    _cmd_run(cli, 'proxy.ngw', 'service nginx reload')
+    # _cmd_run(cli, 'master-18', 'lxc-genconf.sh %s %s' % (__id, __class))
+    # _cmd_run(cli, 'master-18', 'ngw-instance-configure.sh %s %s %s %s' % ((__id,) * 4))
+    # _cmd_run(cli, 'db-precise.ngw', 'pg_setup.sh %s %s %s' % ((__id,) * 3))
+    # _cmd_run(cli, 'proxy.ngw', 'nginx-genconf.sh %s %s %s' % (__id, ext_name, int_name))
+    # _cmd_run(cli, 'master-18', 'lxc-start --daemon --name ngw-%s' % __id) 
+    # _sleep_on_event(event, tag = 'salt/auth', target = int_name, keys = {'act': 'pend'}) 
+    # wheel.call_func('key.accept', match = int_name) 
+    # _sleep_on_event(event, tag = 'salt/minion/%s/start' % int_name, target = int_name)
+    # cli.cmd(int_name, 'state.highstate')
+    # _cmd_run(cli, int_name, 'initctl stop ngw-uwsgi')
+    # _cmd_run(cli, int_name, '~ngw/env/bin/nextgisweb --config ~ngw/config.ini initialize_db') 
+    # _cmd_run(cli, int_name, 'initctl start ngw-uwsgi')
+    # _cmd_run(cli, 'proxy.ngw', 'service nginx reload')
 
-    _log("Create event finished, id: <%s>, class: <%s>, name: <%s>." % (__id, __class, __name)
-            , tag = "NGW-MANAGE") 
-    response = requests.get("http://proxy/activate?instanceid=%s" % __id
-            , headers = { 'host': 'console.gis.to'})
+    # _log("Create event finished, id: <%s>, class: <%s>, name: <%s>." % (__id, __class, __name)
+    #         , tag = "NGW-MANAGE") 
+    # response = requests.get("http://proxy/activate?instanceid=%s" % __id
+    #         , headers = { 'host': 'console.gis.to'})
 
-    if response.content == "True":
-        _log("Instance <%s> activated." % __id)
-    else:
-        _log("Failed to activate instance <%s>." % __id)
-
+    # if response.content == "True":
+    #     _log("Instance <%s> activated." % __id)
+    # else:
+    #     _log("Failed to activate instance <%s>." % __id)
 
     del cli
+    del wheel
+    del event
 
 def destroy(**kwargs):
     cli = salt.client.LocalClient(__opts__['conf_file'])

@@ -4,6 +4,7 @@
         - source: salt://all/files
 
 {% set files = ['/etc/rsyslog.d/80-ngw-minion.conf', '/etc/ssh/sshd_config'] %}
+{# This is a way to hook service watch statements. #}
 {% for file in files %} 
 {{ file }}:
 
