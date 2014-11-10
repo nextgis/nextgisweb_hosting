@@ -47,6 +47,17 @@ zsh:
         - target: /usr/share/zsh/plugins/zsh-syntax-highlighting
 #}
     
+lsof:
+  pkg.installed:
+    - name: lsof
+
+ipython:
+  pkg.installed:
+    - name: ipython
+
+traceroute:
+  pkg.installed
+
 
 
 root:
