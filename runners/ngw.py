@@ -6,9 +6,32 @@ import time
 import subprocess
 import psycopg2
 import requests
-from timeout import timeout
 
+from functools import wraps
+import errno
+import os
+import signal
 
+class TimeoutError(Exception):
+    pass
+
+def timeout(seconds=10, error_message=os.strerror(errno.ETIME)):
+    def decorator(func):
+        def _handle_timeout(signum, frame):
+            raise TimeoutError(error_message)
+
+        def wrapper(*args, **kwargs):
+            signal.signal(signal.SIGALRM, _handle_timeout)
+            signal.alarm(seconds)
+            try:
+                result = func(*args, **kwargs)
+            finally:
+                signal.alarm(0)
+            return result
+
+        return wraps(func)(wrapper)
+
+    return decorator
 
 def _log(message, tag = "NGW", facility = "local0", priority = "notice"):
     subprocess.call(["logger", "-t", tag, "-p", "%s.%s" % (facility, priority), message])
@@ -22,7 +45,7 @@ def _cmd_run(cli, target, *args):
 @timeout(60)
 def _sleep_on_event(event, tag, target, keys = {}, wait = 60, timeout = 300):
     _log("Sleeping on event with tag <%s> from host <%s>." % (tag, target))
-    time_limit = time.time() + timeout
+    time_limit = time.time()
     unmatched = False
     while True:
         value = event.get_event(wait = wait, tag = tag, use_pending = True)
@@ -57,8 +80,8 @@ def create(**kwargs):
     __id = kwargs ['id']
     __class = kwargs ['class']
     __name = kwargs ['name']
-    int_name = __id + '.ngw'
-    ext_name = __name + '.gis.to'
+    int_name = str(__id) + '.ngw'
+    ext_name = str(__name) + '.gis.to'
 
     _log("Create event caught, id: <%s>, class: <%s>, name: <%s>." % (__id, __class, __name)
             , tag = "NGW-MANAGE") 
