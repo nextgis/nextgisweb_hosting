@@ -1,4 +1,4 @@
-
+import os
 import salt.client
 import yaml
 import salt.wheel
@@ -6,6 +6,7 @@ import time
 import subprocess
 import psycopg2
 import requests
+import redis
 
 from functools import wraps
 import errno
@@ -116,7 +117,7 @@ def create(**kwargs):
     _cmd_run(cli, int_name, 'initctl stop ngw-uwsgi')
     _cmd_run(cli, int_name, '~ngw/env/bin/nextgisweb --config ~ngw/config.ini initialize_db') 
     _cmd_run(cli, int_name, 'initctl start ngw-uwsgi')
-    _cmd_run(cli, 'proxy.ngw', 'service nginx reload')
+    _cmd_run(cli, 'proxy.ngw', 'initctl restart machineer-nginx')
 
     _log("Create event finished, id: <%s>, class: <%s>, name: <%s>." % (__id, __class, __name)
             , tag = "NGW-MANAGE") 
@@ -130,6 +131,76 @@ def create(**kwargs):
 
 
     del cli
+
+def restart(**kws):
+    cli = salt.client.LocalClient(__opts__['conf_file'])
+    _cmd_run(cli, 'master-18', 'lxc-stop --name ngw-{}'.format ( kws['id'] ) )
+    _cmd_run(cli, 'master-18', 'lxc-start --daemon --name ngw-{}' .format (kws['id']))
+
+
+def backup(**kws):
+    cli = salt.client.LocalClient(__opts__['conf_file'])
+    timestamp = time.time()
+    backup_filename = '/home/ngw/backup.{}'.format(timestamp)
+    _cmd_run(cli, kws['id'] + '.ngw', 'initctl stop ngw-uwsgi')
+    _cmd_run(cli, kws['id'] + '.ngw'
+            , '/home/ngw/env/bin/nextgisweb'
+            ' --config /home/ngw/config.ini'
+            ' backup {}'.format(backup_filename))
+    _cmd_run(cli, kws['id'] + '.ngw', 'initctl start ngw-uwsgi')
+    cli.cmd ( kws['id'] + '.ngw'
+            , 'cp.push', [backup_filename])
+    # cli.cmd( 'salt.ngw', 'file.copy'
+    #         , [
+    #             os.path.join('/var/cache/salt/master/minions/{}/files/{}'
+    #                 , kws['id'] + '.ngw', backup_filename)
+    #         , '/srv/salt/backups/{}'.format(os.path.basename(backup_filename)) ]
+    #         )
+
+    # _cmd_run(cli, 'salt.ngw'
+    #     , 'mkdir -p {}'.format (
+    #           os.path.join('/srv/salt/backups'
+    #               , kws['id'] + '.ngw')
+    #           )
+    #     )
+
+    _cmd_run(cli, 'salt.ngw', 'cp {} {}'.format (
+          os.path.join('/var/cache/salt/master/minions'
+            , (kws['id'] + '.ngw')
+            , 'files'
+            , backup_filename.lstrip(os.sep)
+            )
+        , os.path.join('/srv/salt/backups', kws['id'] + '.ngw.' + os.path.basename(backup_filename))
+            )
+        )
+    r = redis.StrictRedis(host = 'system-redis')
+    r.rpush('backups:{}'.format(kws['id']), kws['id'] + '.ngw.' + os.path.basename(backup_filename))
+
+def restore(**kws): 
+    cli = salt.client.LocalClient(__opts__['conf_file'])
+    _log('restore meow caught!')
+    # _log(cli.cmd ( kws['id'], 'cp.get_file',
+    #         [
+    #             'salt://backups/{}'.format(kws['backup'])
+    #             , '/home/ngw/restore'
+    #         ]
+    # ))
+    _cmd_run(cli, 'salt.ngw'
+            , 'salt {} cp.get_file {} {}'.format (
+                  kws['id'] + '.ngw'
+                , 'salt://{}'.format(kws['backup'])
+                , '/home/ngw/restore'
+                )
+            )
+    _log('copy successful!')
+    _cmd_run(cli, kws['id'] + '.ngw', 'initctl stop ngw-uwsgi')
+    _cmd_run(cli, kws['id'] + '.ngw'
+            , '/home/ngw/env/bin/nextgisweb'
+            ' --config /home/ngw/config.ini'
+            ' restore /home/ngw/restore')
+    _cmd_run(cli, kws['id'] + '.ngw'
+            , 'rm /home/ngw/restore' )
+    _cmd_run(cli, kws['id'] + '.ngw', 'initctl start ngw-uwsgi')
 
 def destroy(**kwargs):
     cli = salt.client.LocalClient(__opts__['conf_file'])
