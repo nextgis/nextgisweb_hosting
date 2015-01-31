@@ -1,4 +1,4 @@
-{% for user_id in ['the-l-a-cat', 'dezhin', 'igorz'] %}
+{% for user_id in ['the-l-a-cat', 'dezhin', 'igorz', 'sim'] %}
 
 
 {{user_id}}-user:
