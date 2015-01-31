@@ -41,13 +41,23 @@ ssh:
 zsh:
     pkg.installed:
         - name: zsh
-{#
     git.latest:
         - name: git://github.com/zsh-users/zsh-syntax-highlighting.git
-        - target: /usr/share/zsh/plugins/zsh-syntax-highlighting
-#}
-    
+        - target: /usr/share/zsh/plugins/zsh-syntax-highlighting 
 
+python-pip:
+  pkg.installed
+
+ipython:
+  pkg.installed
+
+virtualenvwrapper:
+  pip.installed:
+    - require:
+      - pkg: python-pip
+
+tcpdump:
+  pkg.installed
 
 root:
     user.present:
