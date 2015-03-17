@@ -13,5 +13,15 @@ server {
 
         proxy_pass $up;
     }
+
+    location /redis/ {
+
+        resolver 192.168.18.6;
+        resolver_timeout 10s;
+
+        set $up "http://redis.ngw:9090";
+
+        proxy_pass $up;
+    }
 }
 

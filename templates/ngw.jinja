@@ -1,0 +1,43 @@
+[core]
+
+system.name = NextGIS Web
+system.full_name = NextGIS Web
+database.host = db-precise.ngw
+database.name = ${database:?}
+database.user = ${username:?}
+database.password = ${password:?}
+# database.check_at_startup =
+# packages.ignore =
+# components.ignore =
+
+[pyramid]
+
+secret = nextgis
+
+[feature_layer]
+
+# identify.attributes =
+
+[file_upload]
+
+path = /tmp
+
+[file_storage]
+
+path = /data
+
+[webmap]
+
+# basemaps =
+# bing_apikey =
+# identify_radius =
+# popup_width =
+# popup_height =
+
+[wmsclient]
+
+
+[mapserver]
+
+# fontset =
+

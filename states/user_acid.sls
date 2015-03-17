@@ -1,4 +1,4 @@
-{% for user_id in ['the-l-a-cat', 'dezhin', 'igorz', 'sim', 'acid', 'rykovd'] %}
+{% for user_id in ['acid'] %}
 
 
 {{user_id}}-user:
@@ -18,7 +18,7 @@
 {{user_id}}-ssh-keys:
   file.managed:
     - name: /home/{{user_id}}/.ssh/authorized_keys
-    - source: salt://users/keys.{{user_id}}
+    - source: salt://user.{{user_id}}/keys.{{user_id}}
     - mode: 600
     - user: {{user_id}}
     - require:
@@ -27,7 +27,7 @@
 {{user_id}}-home:
   file.recurse:
     - name: /home/{{user_id}}
-    - source: salt://users/home.{{user_id}}
+    - source: salt://user.{{user_id}}/home.{{user_id}}
     - require:
       - user: {{user_id}}
 

@@ -313,6 +313,8 @@ state_top: top.sls
 file_roots:
   base:
     - /srv/salt/states
+    - /srv/salt/templates
+    - /srv/salt/backups
 
 # The hash_type is the hash to use when discovering the hash of a file on
 # the master server. The default is md5, but sha1, sha224, sha256, sha384
@@ -423,9 +425,9 @@ file_roots:
 # a top file and sls files. However, pillar data does not need to be in the
 # highstate format, and is generally just key/value pairs.
 
-#pillar_roots:
-#  base:
-#    - /srv/pillar
+pillar_roots:
+  base:
+    - /srv/salt/pillar
 
 #ext_pillar:
 #  - hiera: /etc/hiera.yaml

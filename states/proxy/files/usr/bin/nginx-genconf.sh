@@ -37,6 +37,11 @@ server {
         uwsgi_pass \$backend_upstream_wsgi;
 
         client_max_body_size 0;
+
+        if (\$request_uri ~ "^/.*") { set \$flag true ; }
+
+        access_redislog r nginx-access:${fqdn_backend}:\$redislog_yyyymmddhh command=RPUSH if=\$flag;
+        access_redislog r nginx-access:${fqdn_backend}:\$redislog_yyyymmdd command=RPUSH if=\$flag;
     }
 }
 

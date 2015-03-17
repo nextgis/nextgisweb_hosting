@@ -18,3 +18,34 @@
         </form>
     </div>
 </div>
+
+
+<div class='row'>
+    <div class='col-md-4'>
+        <p>Instances running / existing / total: {{sheep_running}} / {{sheep_ordered}} / {{sheep_total}}
+        <p>Names running / total: {{names_running}} / {{names_total}}
+    </div>
+</div>
+
+<style>
+td {
+    padding: 4px;
+    border: solid 2px gray !important;
+}
+
+th {
+    padding: 8px;
+    }
+table { margin: 10px; }
+
+</style>
+<table cellpadding=10 cellspacing=10>
+<tr>
+<th>Instance ID (internal name)
+<th>Name / Link
+<th>Class / Origin
+<th>Status
+<th>Requests<br> hour / day / total
+<th>Controls
+<th>Additional
+</tr>

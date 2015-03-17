@@ -2,15 +2,14 @@
   file.managed:
     - source: salt://openvpn_tap_client/tap_client.conf
 
-/etc/openvpn/tap_client_up.sh:
+/etc/openvpn/tap_client_control.sh:
   file.managed:
-    - source: salt://openvpn_tap_client/tap_client_up.sh
-    - mode: 740
+    - source: salt://openvpn_tap_client/tap_client_control.sh
+    - mode: 750
 
-/etc/openvpn/tap_client_down.sh:
+/etc/network/interfaces.d/tap0.cfg:
   file.managed:
-    - source: salt://openvpn_tap_client/tap_client_down.sh
-    - mode: 740
+    - source: salt://openvpn_tap_client/network/interfaces.d/tap0.cfg
 
 openvpn:
   pkg:
@@ -20,12 +19,10 @@ openvpn:
     - enable: True
     - require:
       - file: /etc/openvpn/tap_client.conf
-      - file: /etc/openvpn/tap_client_up.sh
-      - file: /etc/openvpn/tap_client_down.sh
+      - file: /etc/openvpn/tap_client_control.sh
     - watch:
       - file: /etc/openvpn/tap_client.conf
-      - file: /etc/openvpn/tap_client_up.sh
-      - file: /etc/openvpn/tap_client_down.sh
+      - file: /etc/openvpn/tap_client_control.sh
 
 
 resolvconf:

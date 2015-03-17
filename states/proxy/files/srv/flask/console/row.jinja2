@@ -1,58 +1,81 @@
-<div id='{{ InstanceID }}'>
-    <div class='row'>
-        <hr>
-    </div>
-    <div class='row'>
-        <div class='col-md-6 col-md-offset-1'>
-            <div class='pull-left'>
-                <p>Instance ID: {{ InstanceID }}.</p>
-                <blockquote>
-                    <p><a href='http://{{ InstanceName }}.gis.to/'>{{ InstanceName }}</a></p>
-                    <footer>Instance class: {{ InstanceClass }}</footer> 
-                </blockquote>
-                {% if InstanceOrdered %}
-                <h3><span class="label label-primary pull-left">Ordered</span></h3> {% endif %}
-                {% if InstanceActive %}
-                <h3><span class="label label-success pull-left">Active</span></h3> {% endif %}
+<tr id='{{InstanceID}}'> 
+            <td>{{ InstanceID }}
+            <td><a href='http://{{ InstanceName }}.gis.to/'>{{ InstanceName }}</a>
+            <td>{{ InstanceClass }}
+            {% if InstanceOrdered and InstanceActive %}
+            <td><div class="label label-success">Running</div> {% endif %}
+            {% if InstanceOrdered and not InstanceActive %}
+            <td><div class="label label-info">Creating</div> {% endif %}
+            {% if not InstanceOrdered and InstanceActive %}
+            <td><div class="label label-warning">Destroying</div> {% endif %}
 
-
-            </div>
-            <div class='btn-group pull-right'>
-                {#
-                <button type='button' class='btn btn-info'
-                  onclick='
-                    {
-                        var target = "http://console.gis.to/deactivate?instanceid={{ InstanceID }}"
-                        var xmlHttp = null; 
-                        xmlHttp = new XMLHttpRequest();
-                        xmlHttp.open( "GET", target, false );
-                        xmlHttp.send( null );
-                        if(xmlHttp.responseText=="True")
-                        { document.getElementById("{{ InstanceID }}").style.display="none"; }
-                    } ' 
-                >Deactivate</button> #}
-
-                {% if InstanceActive or InstanceOrdered %}
-            <button type='button' class='btn btn-danger'
-                  onclick='
-                    {
-                        var target = "http://console.gis.to/destroy?instanceid={{ InstanceID }}"
-                        var xmlHttp = null; 
-                        xmlHttp = new XMLHttpRequest();
-                        xmlHttp.open( "GET", target, false );
-                        xmlHttp.send( null );
-                        if(xmlHttp.responseText=="True")
-                        { document.getElementById("{{ InstanceID }}").style.display="none"; }
-                        else { alert(xmlHttp.responseText) ; }
-                    } ' 
-                  >Destroy</button>
-                {% endif %}
-
-              {#
-              <button type='button' class='btn btn-default'>Recreate</button>
-              <button type='button' class='btn btn-primary'>Freeze</button> #}
-            </div>
+            <td id="{{ InstanceID }}-counters" >
+            <td>
+                <div class='btn-group pull-right'>
+                    {#
+                    <button type='button' class='btn btn-info'
+                      onclick='
+                        {
+                            var target = "http://console.gis.to/deactivate?instanceid={{ InstanceID }}"
+                            var xmlHttp = null; 
+                            xmlHttp = new XMLHttpRequest();
+                            xmlHttp.open( "GET", target, false );
+                            xmlHttp.send( null );
+                            if(xmlHttp.responseText=="True")
+                            { document.getElementById("{{ InstanceID }}").style.display="none"; }
+                        } ' 
+                    >Deactivate</button> #}
     
-        </div>
-    </div>
-</div>
+                    {% if InstanceActive or InstanceOrdered %}
+                <button type='button' class='btn btn-warning'
+                      onclick='
+                        {
+                            var target = "http://console.gis.to/restart?instanceid={{ InstanceID }}"
+                            var xmlHttp = null;
+                            xmlHttp = new XMLHttpRequest();
+                            xmlHttp.open( "GET", target, false );
+                            xmlHttp.send( null );
+                            if(xmlHttp.responseText=="True")
+                            { document.getElementById("{{ InstanceID }}").style.background="635"; }
+                            else { alert(xmlHttp.responseText) ; }
+                        } '
+                      >Restart</button>
+                <button type='button' class='btn btn-info'
+                      onclick='
+                        {
+                            var target = "http://console.gis.to/backup?instanceid={{ InstanceID }}"
+                            var xmlHttp = null;
+                            xmlHttp = new XMLHttpRequest();
+                            xmlHttp.open( "GET", target, false );
+                            xmlHttp.send( null );
+                        } ' 
+                      >backup</button>
+                <button type='button' class='btn btn-danger'
+                      onclick='
+                        {
+                            var target = "http://console.gis.to/destroy?instanceid={{ InstanceID }}"
+                            var xmlHttp = null;
+                            xmlHttp = new XMLHttpRequest();
+                            xmlHttp.open( "GET", target, false );
+                            xmlHttp.send( null );
+                            if(xmlHttp.responseText=="True")
+                            { document.getElementById("{{ InstanceID }}").style.display="none"; }
+                            else { alert(xmlHttp.responseText) ; }
+                        } ' 
+                      >Destroy</button>
+                    {% endif %}
+    
+                  {#
+                  <button type='button' class='btn btn-default'>Recreate</button>
+                  <button type='button' class='btn btn-primary'>Freeze</button> #}
+                </div>
+    
+                <script type="text/javascript">
+                    $("#{{InstanceID}}-counters").load("http://console.gis.to/redis/nginx-access/{{ InstanceID }}.ngw/counters".toLowerCase());
+    
+                </script>
+        
+            </td>
+            <td><a href="http://console.gis.to/backups/{{InstanceID}}">backups</a>
+
+</tr>

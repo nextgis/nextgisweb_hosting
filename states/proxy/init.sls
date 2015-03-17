@@ -14,9 +14,11 @@
             - file: /-{{ name }}
         - permissions: 440
 
+{# NginX is to be custom-built with redislog module. #}
+{#
 nginx:
     pkg.installed:
         - name: nginx
     service.running:
         - name: nginx
-
+#}

@@ -4,6 +4,8 @@ from os.path import join, dirname, realpath
 import psycopg2
 import subprocess
 import time
+import redis
+import json
 
 
 app = flask.Flask(__name__)
@@ -70,6 +72,26 @@ def create():
 
     return flask.redirect('http://console.gis.to', code=302)
 
+@app.route('/restart', methods=['GET'])
+def restart():
+
+
+    subprocess.call(['logger', '-p', 'local0.notice', '-t', 'NGW-MANAGE'
+        , 'Web UI calls restart: %s.' % flask.request.args['instanceid']])
+    subprocess.call(['sudo', 'ngw-manager.sh', 'restart', flask.request.args['instanceid']])
+    ret = 'True'
+
+    return ret 
+
+@app.route('/backup', methods=['GET'])
+def backup():
+    subprocess.call(['logger', '-p', 'local0.notice', '-t', 'NGW-MANAGE'
+        , 'Web UI calls backup: %s.' % flask.request.args['instanceid']])
+    subprocess.call(['sudo', 'ngw-manager.sh', 'backup', flask.request.args['instanceid']])
+    ret = 'True'
+
+    return ret 
+
 @app.route('/destroy', methods=['GET'])
 def destroy(): 
 
@@ -91,7 +113,10 @@ def destroy():
     ret = 'True'
 
     try:
-        cur.execute( ''' delete from instances where instanceid = %s '''
+        # cur.execute( ''' delete from instances where instanceid = %s '''
+        #         , [ flask.request.args['instanceid'] ]
+        #         )
+        cur.execute( ''' update instances set instanceactive = False where instanceid = %s '''
                 , [ flask.request.args['instanceid'] ]
                 )
         conn.commit()
@@ -100,9 +125,9 @@ def destroy():
         ret = e.pgerror
 
     cur.close()
-    conn.close() 
+    conn.close()
 
-    return ret 
+    return ret
 
 @app.route('/deactivate', methods=['GET'])
 def deactivate(): 
@@ -153,6 +178,7 @@ def index():
         return str(e)
 
     fetch_last = cur.fetchone() # Returns a singleton-tuple or a None value.  
+
     if fetch_last:
         instance_new_id = fetch_last[0] + 1
     else:
@@ -162,12 +188,61 @@ def index():
         , 'InstanceName': fetch_row[2] , 'InstanceOrdered': fetch_row[3]
         , 'InstanceActive': fetch_row[4]}
             for fetch_row in instance_list_active ]
-    ret = ''.join( [ _render('header.jinja2' ) ]
-        + [ _render('form_create.jinja2', {'LastEntry': '%03d' % instance_new_id }) ]
-        + [ _render('row.jinja2', row) for row in rows ]
-        + [ _render('footer.jinja2') ] )
+    ret = ''.join \
+            ( [ _render('header.jinja2' ) ]
+            + [ _render('form_create.jinja2'
+                , {
+                      'LastEntry': '%03d' % instance_new_id
+                    , 'sheep_total': instance_new_id - 1
+                    , 'sheep_ordered': len( [row for row in rows if row['InstanceOrdered']])
+                    , 'sheep_running': len(
+                        [row for row in rows
+                            if row['InstanceActive'] and row['InstanceOrdered']])
+                    , 'names_running': len(set(
+                        [row['InstanceName'] for row in rows
+                            if row['InstanceActive'] and row['InstanceOrdered']]))
+                    , 'names_total': len(set(
+                        [row['InstanceName'] for row in rows ]))
+                    }
+                )
+              ]
+            + [ _render('row.jinja2', row) for row in rows ]
+            + [ _render('footer.jinja2') ]
+            )
 
     return ret 
+
+@app.route('/backups/<id_>')
+def backups(id_):
+
+    r = redis.StrictRedis (host = 'redis.ngw')
+
+    try:
+        return ''.join (
+              [ _render('backups-header.jinja') ]
+              + [ _render('backups-row.jinja', {'InstanceID': id_, 'key': key, 'backups': r.lrange(key, 0, -1)}) for key in r.keys('backups:*') ]
+            + [ _render('backups-footer.jinja') ]
+            )
+    except Exception as e:
+        return str(e)
+
+
+@app.route('/restore', methods=['GET'])
+def restore():
+    subprocess.call(['logger', '-p', 'local0.notice', '-t', 'NGW-MANAGE'
+        , 'Web UI calls restore: {} on {}.' .format (
+              flask.request.args['backup']
+            , flask.request.args['instanceid']) ]
+        )
+    subprocess.call(['sudo', 'ngw-manager.sh'
+        , 'restore'
+        , flask.request.args['backup']
+        , flask.request.args['instanceid']])
+    ret = 'True'
+
+    return ret 
+
+
 
 def _db_init():
     conn = psycopg2.connect(database="front", user="front", password="front", host="db-precise")
@@ -176,7 +251,7 @@ def _db_init():
                 ( id serial primary key
                 , InstanceID varchar not null unique
                 , InstanceClass varchar not null
-                , InstanceName varchar not null unique
+                , InstanceName varchar not null
                 , InstanceOrdered boolean
                 , InstanceActive boolean
                 , InstanceEventAccepted boolean
@@ -210,9 +285,9 @@ def _db_init():
 #     return False 
 
 if __name__ == '__main__':
-    # if not app.debug:
-    #     import logging
-    #     file_handler = logging.FileHandler(filename = '/tmp/flask.log')
-    #     app.logger.addHandler (file_handler)
+    if not app.debug:
+        import logging
+        file_handler = logging.FileHandler(filename = '/var/log/flask.log')
+        app.logger.addHandler (file_handler)
     app.run()
 

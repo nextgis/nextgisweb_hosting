@@ -74,6 +74,33 @@ logger -p local0.notice -t NGW-MANAGE \
 
 case $action in
 
+    (restart)
+        export id="$1"
+
+        event_tag="ngw/restart"
+        event_message="{ 'id': '${id}' }" 
+
+        f_event "$event_message" "$event_tag"
+        ;;
+    (backup)
+        export id="$1"
+
+        event_tag="ngw/backup"
+        event_message="{ 'id': '${id}' }" 
+
+        f_event "$event_message" "$event_tag"
+        ;;
+
+    (restore)
+        export backup="$1"
+        export id="$2"
+
+        event_tag="ngw/restore"
+        event_message="{ 'id': '${id}' , 'backup': '${backup}' }" 
+
+        f_event "$event_message" "$event_tag"
+        ;;
+
     (create)
         export id="$1"
         class="$2"
